@@ -1,10 +1,8 @@
 # AI Document Intelligence
 
-Enterprise-oriented document processing prototype for extracting, validating,
-auditing, and evaluating structured company information from PDF documents.
+Enterprise-oriented document processing prototype for extracting, validating, auditing, and evaluating structured company information from PDF documents.
 
-The project demonstrates how an LLM can be integrated as one component of a
-controlled document-processing pipeline rather than used as a standalone chatbot.
+The project demonstrates how an LLM can be integrated as one component of a controlled document-processing pipeline rather than used as a standalone chatbot.
 
 ## Architecture
 
@@ -35,30 +33,34 @@ AUTO_APPROVED / REVIEW / REJECTED
     |
     v
 PostgreSQL / JSONB Audit Trail
+```
 
-Features
-PDF text extraction
-OCR fallback for scanned/image-only PDFs
-LLM-based structured information extraction
-Pydantic schemas for structured outputs
-Evidence snippets for extracted values
-Deterministic business validation
-Slovak company ID checksum validation
-Country-aware validation rules
-Confidence scoring based on observable signals
-Human-review routing
-PostgreSQL persistence with JSONB
-Prompt versioning and audit history
-Processing-run comparison
-Ground-truth evaluation
-Field-level accuracy measurement
-Regression evaluation by prompt version
-FastAPI REST API with OpenAPI/Swagger documentation
-Docker and Docker Compose support
+## Features
 
-API
+- PDF text extraction
+- OCR fallback for scanned/image-only PDFs
+- LLM-based structured information extraction
+- Pydantic schemas for structured outputs
+- Evidence snippets for extracted values
+- Deterministic business validation
+- Slovak company ID checksum validation
+- Country-aware validation rules
+- Confidence scoring based on observable signals
+- Human-review routing
+- PostgreSQL persistence with JSONB
+- Prompt versioning and audit history
+- Processing-run comparison
+- Ground-truth evaluation
+- Field-level accuracy measurement
+- Regression evaluation by prompt version
+- FastAPI REST API with OpenAPI/Swagger documentation
+- Docker and Docker Compose support
+
+## API
+
 Main endpoints:
 
+```text
 GET  /health
 POST /documents/process
 GET  /runs
@@ -66,17 +68,19 @@ GET  /runs/{run_id}
 GET  /runs/compare/{run_id_a}/{run_id_b}
 GET  /runs/{run_id}/evaluate
 GET  /evaluation?prompt_version=v2
+```
 
-Example Processing Flow
+## Example Processing Flow
+
 A digital PDF is processed through native text extraction.
 
-If no usable text layer is available, the pipeline automatically falls back to
-OCR using Tesseract.
+If no usable text layer is available, the pipeline automatically falls back to OCR using Tesseract.
 
-The extracted text is then passed to the LLM, which returns structured company
-data according to a predefined Pydantic schema.
+The extracted text is then passed to the LLM, which returns structured company data according to a predefined Pydantic schema.
 
 Example fields include:
+
+```json
 {
   "company_name": "Example GmbH",
   "company_id": "12345678",
@@ -91,154 +95,161 @@ Example fields include:
     "country": "Austria"
   }
 }
+```
 
-Each extracted field can also contain an evidence snippet copied from the source
-document.
+Each extracted field can also contain an evidence snippet copied from the source document.
 
-Validation
+## Validation
 
 The project intentionally separates several kinds of validation.
 
-Schema Validation
+### Schema Validation
 
-Pydantic verifies that the LLM output conforms to the expected technical
-structure and data types.
+Pydantic verifies that the LLM output conforms to the expected technical structure and data types.
 
-Business Validation
+### Business Validation
 
 Additional deterministic rules check whether extracted values are plausible.
 
 Examples:
 
-required company fields
-Slovak IČO format and checksum
-country-specific tax/VAT rules
-plausible document dates
-required address information
+- required company fields
+- Slovak IČO format and checksum
+- country-specific tax/VAT rules
+- plausible document dates
+- required address information
 
-This distinction is important because syntactically valid data is not
-necessarily factually or semantically valid.
+This distinction is important because syntactically valid data is not necessarily factually or semantically valid.
 
-Confidence and Review
+## Confidence and Review
 
 The model does not assign its own confidence score.
 
 Instead, confidence is derived from observable signals such as:
 
-validation errors
-validation warnings
-missing evidence
-deterministic checks
+- validation errors
+- validation warnings
+- missing evidence
+- deterministic checks
 
 The resulting score is used to route documents to:
+
+```text
 AUTO_APPROVED
 REVIEW
 REJECTED
+```
 
-Auditability
+## Auditability
 
 Every processing run stores metadata including:
 
-original filename
-extracted structured data
-validation result
-confidence score
-final status
-model name
-prompt version
-processing time
-timestamp
+- original filename
+- extracted structured data
+- validation result
+- confidence score
+- final status
+- model name
+- prompt version
+- processing time
+- timestamp
 
-Previous runs are not overwritten.
+Previous runs are not overwritten. This allows changes in prompts or models to be compared later.
 
-This allows changes in prompts or models to be compared later.
+## PostgreSQL
 
-PostgreSQL
-
-Stable processing metadata is stored relationally, while extracted document
-data is stored as JSONB.
+Stable processing metadata is stored relationally, while extracted document data is stored as JSONB.
 
 This keeps the extraction schema flexible while still allowing queries such as:
+
+```sql
 SELECT
     id,
     extracted_data->>'company_name' AS company_name
 FROM processing_runs
 WHERE extracted_data->>'vat_id' = 'SK2022187453';
+```
 
-Evaluation
+## Evaluation
 
-The project includes a small ground-truth regression set.
+The project includes a small ground-truth regression set. Prompt versions can be evaluated field by field against known reference data.
 
-Prompt versions can be evaluated field by field against known reference data.
+### Current prototype result — prompt `v2`
 
-Current prototype result for prompt version v2:
-Documents evaluated: 2
-Fields evaluated:    22
-Correct fields:      22
-Field-level accuracy: 100%
+| Metric | Result |
+|---|---:|
+| Documents evaluated | 2 |
+| Fields evaluated | 22 |
+| Correct fields | 22 |
+| Field-level accuracy | **100%** |
 
-This result applies only to the current small regression set and should not be
-interpreted as production-level accuracy.
+> **Note:** This result applies only to the current small regression set and should not be interpreted as production-level accuracy.
 
-The purpose of the evaluation layer is to make prompt and model changes
-measurable and to detect regressions as the dataset grows.
+The purpose of the evaluation layer is to make prompt and model changes measurable and to detect regressions as the dataset grows.
 
-Running with Docker
+## Running with Docker
 
-Create a .env file based on .env.example and provide your OpenAI API key.
+Create a `.env` file based on `.env.example` and provide your OpenAI API key.
 
 Then run:
+
+```bash
 docker compose build
 docker compose up
+```
 
-Open:
+Open the Swagger/OpenAPI documentation at:
 
+```text
 http://localhost:8000/docs
+```
 
 The Docker Compose setup starts both:
 
-FastAPI application
-PostgreSQL database
+- FastAPI application
+- PostgreSQL database
 
 Tesseract OCR is installed directly inside the API container.
 
-Configuration
+## Configuration
 
 Sensitive configuration is supplied through environment variables.
 
 Example:
 
+```dotenv
 OPENAI_API_KEY=your_openai_api_key_here
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ai_document_intelligence
 TESSERACT_CMD=
+```
 
 Secrets and real documents are intentionally excluded from Git.
 
-Design Principles
+## Design Principles
 
 The prototype is built around several principles:
 
-structured outputs instead of free-form LLM responses
-deterministic validation whenever possible
-evidence and traceability
-separation of responsibilities
-prompt and model versioning
-measurable evaluation
-human review for uncertain cases
-reproducible runtime environment
-Future Improvements
+- structured outputs instead of free-form LLM responses
+- deterministic validation whenever possible
+- evidence and traceability
+- separation of responsibilities
+- prompt and model versioning
+- measurable evaluation
+- human review for uncertain cases
+- reproducible runtime environment
+
+## Future Improvements
 
 Possible next steps include:
 
-larger and more diverse regression dataset
-German, Slovak, Czech, and English OCR language packs
-asynchronous processing for large documents
-background workers and job queues
-authentication and authorization
-file size and page limits
-malware/file validation
-PostgreSQL migrations
-automated tests and CI
-embeddings and RAG for document search
-production observability and metrics
-
+- larger and more diverse regression dataset
+- German, Slovak, Czech, and English OCR language packs
+- asynchronous processing for large documents
+- background workers and job queues
+- authentication and authorization
+- file size and page limits
+- malware/file validation
+- PostgreSQL migrations
+- automated tests and CI
+- embeddings and RAG for document search
+- production observability and metrics

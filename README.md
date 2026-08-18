@@ -38,7 +38,7 @@ PostgreSQL / JSONB Audit Trail
 ## Features
 
 - PDF text extraction
-- OCR fallback for scanned/image-only PDFs
+- OCR fallback for scanned and image-only PDFs
 - LLM-based structured information extraction
 - Pydantic schemas for structured outputs
 - Evidence snippets for extracted values
@@ -55,6 +55,20 @@ PostgreSQL / JSONB Audit Trail
 - Regression evaluation by prompt version
 - FastAPI REST API with OpenAPI/Swagger documentation
 - Docker and Docker Compose support
+
+## Tech Stack
+
+- Python
+- FastAPI
+- OpenAI API
+- Pydantic
+- PyMuPDF
+- Tesseract OCR
+- PostgreSQL
+- JSONB
+- Psycopg
+- Docker
+- Docker Compose
 
 ## API
 
@@ -78,7 +92,7 @@ If no usable text layer is available, the pipeline automatically falls back to O
 
 The extracted text is then passed to the LLM, which returns structured company data according to a predefined Pydantic schema.
 
-Example fields include:
+Example output fields:
 
 ```json
 {
@@ -97,7 +111,7 @@ Example fields include:
 }
 ```
 
-Each extracted field can also contain an evidence snippet copied from the source document.
+Each extracted field can also include an evidence snippet copied from the source document.
 
 ## Validation
 
@@ -111,11 +125,11 @@ Pydantic verifies that the LLM output conforms to the expected technical structu
 
 Additional deterministic rules check whether extracted values are plausible.
 
-Examples:
+Examples include:
 
 - required company fields
 - Slovak IČO format and checksum
-- country-specific tax/VAT rules
+- country-specific tax and VAT rules
 - plausible document dates
 - required address information
 
@@ -154,13 +168,17 @@ Every processing run stores metadata including:
 - processing time
 - timestamp
 
-Previous runs are not overwritten. This allows changes in prompts or models to be compared later.
+Previous runs are not overwritten.
 
-## PostgreSQL
+This allows changes in prompts or models to be compared later.
+
+## PostgreSQL and JSONB
 
 Stable processing metadata is stored relationally, while extracted document data is stored as JSONB.
 
-This keeps the extraction schema flexible while still allowing queries such as:
+This keeps the extraction schema flexible while still allowing direct database queries.
+
+Example:
 
 ```sql
 SELECT
@@ -172,18 +190,21 @@ WHERE extracted_data->>'vat_id' = 'SK2022187453';
 
 ## Evaluation
 
-The project includes a small ground-truth regression set. Prompt versions can be evaluated field by field against known reference data.
+The project includes a small ground-truth regression set.
 
-### Current prototype result — prompt `v2`
+Prompt versions can be evaluated field by field against known reference data.
+
+### Current Prototype Result
 
 | Metric | Result |
 |---|---:|
+| Prompt version | `v2` |
 | Documents evaluated | 2 |
 | Fields evaluated | 22 |
 | Correct fields | 22 |
-| Field-level accuracy | **100%** |
+| Field-level accuracy | 100% |
 
-> **Note:** This result applies only to the current small regression set and should not be interpreted as production-level accuracy.
+> The 100% result applies only to the current small two-document regression set and must not be interpreted as production-level accuracy.
 
 The purpose of the evaluation layer is to make prompt and model changes measurable and to detect regressions as the dataset grows.
 
@@ -200,9 +221,7 @@ docker compose up
 
 Open the Swagger/OpenAPI documentation at:
 
-```text
-http://localhost:8000/docs
-```
+`http://localhost:8000/docs`
 
 The Docker Compose setup starts both:
 
@@ -217,13 +236,13 @@ Sensitive configuration is supplied through environment variables.
 
 Example:
 
-```dotenv
+```text
 OPENAI_API_KEY=your_openai_api_key_here
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ai_document_intelligence
 TESSERACT_CMD=
 ```
 
-Secrets and real documents are intentionally excluded from Git.
+Secrets and real source documents are intentionally excluded from Git.
 
 ## Design Principles
 
@@ -238,6 +257,61 @@ The prototype is built around several principles:
 - human review for uncertain cases
 - reproducible runtime environment
 
+## Key Design Decisions
+
+### Native PDF text first, OCR only as fallback
+
+Digitally generated PDFs are processed using their existing text layer. OCR is only used when no usable text can be extracted.
+
+This avoids unnecessary OCR processing and reduces an additional source of extraction errors.
+
+### LLM for semantic extraction, deterministic code for rules
+
+The LLM is used where semantic understanding is useful. Deterministic validation is preferred whenever a reliable rule exists.
+
+For example, company identifiers and document dates are checked outside the model where possible.
+
+### Prompt versioning
+
+Every processing run stores the prompt version and model name.
+
+This makes it possible to compare the effect of prompt changes on the same source documents.
+
+### Ground-truth regression testing
+
+Prompt changes are evaluated against known reference values instead of being judged only by visual inspection.
+
+This makes quality changes measurable and helps detect regressions.
+
+## Project Structure
+
+```text
+ai-document-intelligence/
+|
++-- app/
+|   +-- api.py
+|   +-- database.py
+|   +-- evaluation.py
+|   +-- exceptions.py
+|   +-- llm_service.py
+|   +-- models.py
+|   +-- ocr_service.py
+|   +-- pdf_reader.py
+|   +-- processor.py
+|   +-- validation.py
+|
++-- evaluation/
+|   +-- ground_truth.json
+|
++-- .dockerignore
++-- .env.example
++-- .gitignore
++-- Dockerfile
++-- docker-compose.yml
++-- requirements.txt
++-- README.md
+```
+
 ## Future Improvements
 
 Possible next steps include:
@@ -248,8 +322,12 @@ Possible next steps include:
 - background workers and job queues
 - authentication and authorization
 - file size and page limits
-- malware/file validation
+- malware and file validation
 - PostgreSQL migrations
 - automated tests and CI
 - embeddings and RAG for document search
 - production observability and metrics
+
+## Purpose
+
+This project was built as an enterprise-oriented AI engineering prototype focused on practical document intelligence, system integration, validation, auditability, and measurable quality rather than on a standalone chatbot experience.

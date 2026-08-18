@@ -1,0 +1,32 @@
+{
+    "test_company.pdf": {
+      "company_name": "Stredoslovenská distribučná, a. s.",
+      "company_id": "36 442 151",
+      "company_register_number": "10514/L",
+      "tax_id": "2022187453",
+      "vat_id": "SK2022187453",
+      "legal_form": "akciová spoločnosť (a. s.)",
+      "address": {
+        "street": "Pri Rajčianke 2927/8",
+        "postal_code": "010 47",
+        "city": "Žilina",
+        "country": null
+      },
+      "document_date": null
+    },
+    "scan-26060414130.pdf": {
+      "company_name": "EUROPLANT slechtitelska spol. s r.o.",
+      "company_id": null,
+      "company_register_number": null,
+      "tax_id": null,
+      "vat_id": "CZ25141678",
+      "legal_form": "spol. s r.o.",
+      "address": {
+        "street": "Lhotska 2221/32",
+        "postal_code": "19300",
+        "city": "Praha 9",
+        "country": "Tschechische Republik"
+      },
+      "document_date": "2026-06-04"
+    }
+  }
